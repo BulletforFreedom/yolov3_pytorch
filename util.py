@@ -46,3 +46,4 @@ def plot_bb(im,bb,cls,inp_dim,textSize=4,textThickness=8):
 
 if __name__ == '__main__':
     cfgfile='./cfg/yolov3.cfg'
+    print(111)
