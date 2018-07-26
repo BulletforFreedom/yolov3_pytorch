@@ -26,6 +26,8 @@ def get_test_input(img_name,inp_dim):
     return img_
 
 def plot_bb(im,bb,cls,inp_dim,textSize=4,textThickness=8):
+    if im.shape[0]==3:
+        im=im.transpose(1,2,0)#.contiguous()
     h,w,c = im.shape
 
     for idx,box in enumerate(bb):
@@ -33,7 +35,7 @@ def plot_bb(im,bb,cls,inp_dim,textSize=4,textThickness=8):
         x1 = int(max([0, (box[0]/inp_dim)*w ]))
         x2 = int(min([w, (box[2]/inp_dim)*w ]))
         y1 = int(max([0, (box[1]/inp_dim)*h ]))
-        y2 = int(min([h, (box[3]/inp_dim)*h ]))
+        y2 = int(min([h, (box[3]/inp_dim)*h ]))        
 
         cv2.rectangle(im,(x1,y1),(x2,y2),(0,0,255),2)
         cv2.putText(im,

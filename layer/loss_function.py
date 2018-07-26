@@ -6,9 +6,7 @@ import numpy as np
 
 from boxes.boxes import Boxes as bbox
 from net.darknet import Darknet
-import util as ut
 from common.coco_dataset import COCODataset
-from logger import Logger as log
 
 class YOLO3Loss(nn.Module):
     def __init__(self, anchor_list, scaled_anchor_list, num_classes, inp_dim, stride, ignore_threshold=0.5):
@@ -155,7 +153,7 @@ class YOLO3Loss(nn.Module):
                          + best_iou_index] = 2-target[b, n, 3]*target[b, n, 4]
                 tconf[b, last_num_anchors_list[best_iou_feature_index]\
                          + len(self.scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
-                         + best_iou_index] = float(np.max(best_iou_list))
+                         + best_iou_index] = 1#float(np.max(best_iou_list))
                 # One-hot encoding of label
                 tcls[b, last_num_anchors_list[best_iou_feature_index]\
                          + len(self.scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
@@ -164,6 +162,25 @@ class YOLO3Loss(nn.Module):
                     
 
         return mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls
+        
+    def debug_loss(self, prediction, targets, stride):
+        self.stride=stride
+        bs = prediction.size(0)
+        total_anchors = prediction.size(1) #10647[507,2028,8112]
+        feature_map_size_list = [int((self.img_size / self.stride) * pow(2,i)) for i in range(self.num_feature_map)] 
+
+        mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self.get_target(targets, total_anchors,
+                                                                        bs, feature_map_size_list,
+                                                                        self.ignore_threshold)
+        tx = tx.unsqueeze(2)
+        ty = ty.unsqueeze(2)
+        tw = tw.unsqueeze(2)
+        th = th.unsqueeze(2)
+        tconf = tconf.unsqueeze(2)
+        
+        labels=t.cat((tx,ty,tw,th,tconf,tcls),2)
+        
+        return labels
         
 if __name__ == '__main__':
     
@@ -196,4 +213,3 @@ if __name__ == '__main__':
     loss=loss.cpu().numpy()
     t.cuda.empty_cache()
     print(loss)
-#/home/lsk/Downloads/YOLOv3_PyTorch/data/coco/images/train2014/COCO_train2014_000000000025.jpg
