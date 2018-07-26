@@ -32,11 +32,11 @@ if __name__=='__main__':
                                          (416, 416), is_training=True),
                                          batch_size=1, shuffle=False, num_workers=32, pin_memory=True)
     
-    cfg=Configer("./cfg/yolov3_test.cfg")
+    cfg=Configer("./cfg/yolov3_train.cfg")
     net_info=cfg.get_net_info()
     blocks=cfg.get_blocks()
     
-    model = Darknet(net_info, blocks)
+    model = Darknet(cfg)
     #model.load_weights("../yolov3.weights")
     
     model.train(True)
@@ -46,8 +46,7 @@ if __name__=='__main__':
         
     #dataloader = DataLoader(model.get_net_info())
         
-    loss_function = YOLO3Loss(model.anchor_list, model.scaled_anchor_list, cfg.get_num_classes(), 
-                              cfg.get_inp_dim(), cfg.get_iou_threshold())
+    loss_function = YOLO3Loss(cfg)
 
     # Start the training loop
     

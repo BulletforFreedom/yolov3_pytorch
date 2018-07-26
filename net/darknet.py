@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Jun 28 16:24:49 2018
-
 @author: lsk
 """
 
@@ -30,15 +29,14 @@ class Darknet(nn.Module):
     forward return:
         size(batch_size,num_anchor_boxes,x+y+w+h+c+cls)
     '''
-    def __init__(self, net_info, blocks):
+    def __init__(self, configer):
         super(Darknet, self).__init__()
         self.anchor_list=[]
-        
-        self.blocks = blocks
-        self.net_info = net_info
+        self.configer=configer
+        self.blocks = self.configer.get_blocks()
+        self.net_info = self.configer.get_net_info()
         self.module_list = self.create_modules()        
         self.stride=-1
-        self.scaled_anchor_list=[]
         self.flag=0
     
     
@@ -47,7 +45,7 @@ class Darknet(nn.Module):
         modules=[x['type'] for x in self.blocks]
         outputs={}
         write=0
-        if len(self.scaled_anchor_list)!=0:
+        if len(self.configer.get_scaled_anchor_list())!=0:            
             self.flag=1
         
         for i in range(len(modules)):
@@ -71,8 +69,8 @@ class Darknet(nn.Module):
             elif modules[i]=='yolo':
 
                 x = self.module_list[i](x)#ut.predict_transform(x, self.inp_dim, anchors, self.num_classes, CUDA)
-                if not self.flag:   
-                    self.scaled_anchor_list.append(self.module_list[i][0].scaled_anchors.cpu().numpy())
+                #if not self.flag:   
+                    #self.configer.set_scaled_anchor_list(self.module_list[i][0].scaled_anchors.cpu().numpy())
                 if type(x) == int:#?
                     continue
                 
@@ -307,15 +305,14 @@ class Darknet(nn.Module):
                 mask=[int(x) for x in mask]
                 
                 anchors=self.net_info['anchors'].split(',')
-                anchors=[int(x) for x in anchors]
+                anchors=[float(x) for x in anchors]
                 anchors=[(anchors[x],anchors[x+1]) for x in range(0,len(anchors),2)]
                 anchors=[anchors[x] for x in mask]            
                 
                 self.anchor_list.append(anchors)
                 
                 detection = DetectionLayer(anchors=anchors, 
-                                           inp_dim=int(self.net_info['height']),
-                                           num_classes=int(self.net_info['classes']),
+                                           configer=self.configer,
                                            CUDA=t.cuda.is_available())
                 module.add_module("Detection_{}".format(index), detection)
                 
@@ -355,4 +352,3 @@ if __name__=='__main__':
     gt_class_ids=[int(x[-1]) for x in result]
     im = ut.plot_bb(im_gt,gt_boxes,gt_class_ids,model.inp_dim)
     cv2.imwrite('001_new.jpg', im)
-    

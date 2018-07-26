@@ -1,38 +1,44 @@
 [net]
-# Testing
-batch=1
-subdivisions=1
-# Training
-# batch=64
-# subdivisions=16
-width=416
-height=416
+method = yolov3
+
+#test:train=0
+train=1
+
+#data augmentation
+angle=0
+saturation = 1.5
+exposure = 1.5
+hue=.1
+mul_train=1
+
+#input
+batch_size=1
+#subdivisions=1
+inp_dim=416
 channels=3
-classes=80
+
+#sgd
 momentum=0.9
 decay=0.0005
-#angle=0
-#saturation = 1.5
-#exposure = 1.5
-#hue=.1
-
 learning_rate=0.001
 burn_in=1000
 max_batches = 500200
-policy=steps
+#policy=steps
 steps=400000,450000
 scales=.1,.1
 
+#loss coefficient
 object_scale=5
 noobject_scale=1
 class_scale=1
 coord_scale=1
 
-#num_anchors=9
-#jitter=.3
-ignore_iou_thresh = .7
-#random=1
+#output
+classes=80
 
+#anchors=9
+jitter=.3
+ignore_iou_thresh = .7
 anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
 
 [convolutional]

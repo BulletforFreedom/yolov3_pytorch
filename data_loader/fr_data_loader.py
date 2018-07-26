@@ -11,12 +11,12 @@ from __future__ import print_function
 import os
 
 import torch.utils.data as data
-from utils.helpers.json_helper import JsonHelper
+from data_loader.json_helper import JsonHelper
 
-from datasets.det.det_data_utilizer import DetDataUtilizer
-from datasets.tools.det_transforms import ResizeBoxes
-from utils.helpers.image_helper import ImageHelper
-from utils.tools.logger import Logger as Log
+#from datasets.det.det_data_utilizer import DetDataUtilizer
+#from datasets.tools.det_transforms import ResizeBoxes
+#from utils.helpers.image_helper import ImageHelper
+from logger import Logger as Log
 
 
 class FRDataLoader(data.Dataset):
@@ -29,7 +29,7 @@ class FRDataLoader(data.Dataset):
         self.aug_transform = aug_transform
         self.img_transform = img_transform
         #self.det_data_utilizer = DetDataUtilizer(configer)
-
+    '''
     def __getitem__(self, index):
         img = ImageHelper.pil_open_rgb(self.img_list[index])
 
@@ -44,6 +44,7 @@ class FRDataLoader(data.Dataset):
             img = self.img_transform(img)
 
         return img, bboxes, labels
+    '''
 
     def __len__(self):
 

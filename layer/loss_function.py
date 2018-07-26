@@ -9,17 +9,16 @@ from net.darknet import Darknet
 from common.coco_dataset import COCODataset
 
 class YOLO3Loss(nn.Module):
-    def __init__(self, anchor_list, scaled_anchor_list, num_classes, inp_dim, stride, ignore_threshold=0.5):
+    def __init__(self, configer):
         super(YOLO3Loss,self).__init__()
-        self.anchors = anchor_list                 #type: int
-        self.scaled_anchor_list=scaled_anchor_list #tpye: np.float34, len: 3
-        self.num_feature_map = len(anchor_list)    #3
-        self.num_classes = num_classes
-        self.bbox_attrs = 5 + num_classes
-        self.img_size = inp_dim    #416
-        self.stride=-1
+        self.configer=configer        
+        #self.num_feature_map = len(self.configer.get_scaled_anchor_list())    #3
+        self.num_classes = self.configer.get_num_classes()
+        self.bbox_attrs = 5 + self.num_classes
+        self.img_size = self.configer.get_inp_dim()    #416
+        self.stride=self.configer.get_strides()
 
-        self.ignore_threshold = ignore_threshold
+        self.ignore_threshold = self.configer.get_iou_threshold()
 
         '''
         self.coord_scale = loss_lambda[0]
@@ -31,12 +30,13 @@ class YOLO3Loss(nn.Module):
         self.mse_loss = nn.MSELoss()
         self.bce_loss = nn.BCELoss()
 
-    def forward(self, prediction, targets, stride):
+    def forward(self, prediction, targets):
+        
+        num_feature_map = len(self.configer.get_scaled_anchor_list())
 
-        self.stride=stride
         bs = prediction.size(0)
         total_anchors = prediction.size(1) #10647[507,2028,8112]
-        feature_map_size_list = [int((self.img_size / self.stride) * pow(2,i)) for i in range(self.num_feature_map)]
+        feature_map_size_list = [int((self.img_size / self.stride) * pow(2,i)) for i in range(num_feature_map)]
                 
         # Get outputs
         x = prediction[..., 0]          # Center x
@@ -46,9 +46,8 @@ class YOLO3Loss(nn.Module):
         conf = prediction[..., 4]       # Conf
         pred_cls = prediction[..., 5:]  # Cls pred.
 
-        mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self.get_target(targets, total_anchors,
-                                                                        bs, feature_map_size_list,
-                                                                        self.ignore_threshold)
+        mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self._get_target(targets, total_anchors,
+                                                                        bs, feature_map_size_list, num_feature_map)
         mask, noobj_mask = mask.cuda(), noobj_mask.cuda()
         tx, ty, tw, th = tx.cuda(), ty.cuda(), tw.cuda(), th.cuda()
         weight_w_h, tconf, tcls = weight_w_h.cuda(), tconf.cuda(), tcls.cuda()
@@ -67,12 +66,14 @@ class YOLO3Loss(nn.Module):
             #loss_h.item(), loss_conf.item(), loss_cls.item()
         
     
-    def get_target(self, target, total_anchors, bs, feature_map_size_list, ignore_threshold):
+    def _get_target(self, target, total_anchors, bs, feature_map_size_list, num_feature_map):
         '''
         noobj_mask: mask the non-object anchor boxes which ious are less than threshold
         mask: mark the object anchor boxes with best iou
         ignore the anchor boxes which ious are greater than threshold and less than best iou
         '''
+        
+        scaled_anchor_list = self.configer.get_scaled_anchor_list() #len: 3
         
         mask = t.zeros(bs, total_anchors, requires_grad=False)      #zeros[bs,10647]
         noobj_mask = t.ones(bs, total_anchors, requires_grad=False)    #ones[bs,10647]
@@ -85,9 +86,9 @@ class YOLO3Loss(nn.Module):
         tcls = t.zeros(bs, total_anchors, self.num_classes, requires_grad=False)
                                                                                      #zeros[bs,10647,80]
         last_num_anchors_list=[0]
-        for i in range(self.num_feature_map-1):
+        for i in range(num_feature_map-1):
             last_num_anchors_list.append(last_num_anchors_list[i]+
-                                         len(self.scaled_anchor_list[i]) * feature_map_size_list[i] ** 2)
+                                         len(scaled_anchor_list[i]) * feature_map_size_list[i] ** 2)
         
         for b in range(bs):
             for n in range(target.shape[1]):
@@ -97,7 +98,7 @@ class YOLO3Loss(nn.Module):
                 best_iou_list=[]
                 best_iou_index_list=[]
                 gi_j_list = []
-                for m in range(self.num_feature_map):
+                for m in range(num_feature_map):
                     # Convert to position relative to box
                     gx = target[b, n, 1] * feature_map_size_list[m]
                     gy = target[b, n, 2] * feature_map_size_list[m]
@@ -111,14 +112,14 @@ class YOLO3Loss(nn.Module):
                     # Get shape of gt box
                     gt_box = t.FloatTensor(np.array([0, 0, gw, gh])).unsqueeze(0)                    
                     # Get shape of anchor box
-                    anchor_shapes = t.FloatTensor(np.concatenate((np.zeros((len(self.scaled_anchor_list[m]), 2)),
-                                                                  self.scaled_anchor_list[m]), 1))                    
+                    anchor_shapes = t.FloatTensor(np.concatenate((np.zeros((len(scaled_anchor_list[m]), 2)),
+                                                                  scaled_anchor_list[m]), 1)) 
                     # Calculate iou between gt and anchor shapes
                     anch_ious = bbox.bbox_iou(gt_box, anchor_shapes)
                     # Where the overlap is larger than threshold set mask to zero (ignore)
                     for i in range(anch_ious.size()[0]):
-                        if anch_ious[i] > ignore_threshold:
-                                noobj_mask[b, (last_num_anchors_list[m] + len(self.scaled_anchor_list[m]) * gi * gj)+i] = 0
+                        if anch_ious[i] > self.ignore_threshold:
+                                noobj_mask[b, (last_num_anchors_list[m] + len(scaled_anchor_list[m]) * gi * gj)+i] = 0
 
                     # Find the best matching anchor box
 
@@ -132,31 +133,31 @@ class YOLO3Loss(nn.Module):
 
                 # Masks
                 mask[b, last_num_anchors_list[best_iou_feature_index]\
-                         + len(self.scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
+                         + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
                          + best_iou_index] = 1                
                 # Coordinates
                 tx[b, last_num_anchors_list[best_iou_feature_index]\
-                         + len(self.scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
+                         + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
                          + best_iou_index] = target[b, n, 1] * self.img_size
                 ty[b, last_num_anchors_list[best_iou_feature_index]\
-                         + len(self.scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
+                         + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
                          + best_iou_index] = target[b, n, 2] * self.img_size
                 # Width and height
                 tw[b, last_num_anchors_list[best_iou_feature_index]\
-                         + len(self.scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
+                         + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
                          + best_iou_index] = target[b, n, 3] * self.img_size
                 th[b, last_num_anchors_list[best_iou_feature_index]\
-                         + len(self.scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
+                         + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
                          + best_iou_index] = target[b, n, 4] * self.img_size                
                 weight_w_h[b, last_num_anchors_list[best_iou_feature_index]\
-                         + len(self.scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
+                         + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
                          + best_iou_index] = 2-target[b, n, 3]*target[b, n, 4]
                 tconf[b, last_num_anchors_list[best_iou_feature_index]\
-                         + len(self.scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
+                         + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
                          + best_iou_index] = 1#float(np.max(best_iou_list))
                 # One-hot encoding of label
                 tcls[b, last_num_anchors_list[best_iou_feature_index]\
-                         + len(self.scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
+                         + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
                          + best_iou_index, int(target[b, n, 0])] = 1
                     
                     
@@ -164,14 +165,14 @@ class YOLO3Loss(nn.Module):
         return mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls
         
     def debug_loss(self, prediction, targets, stride):
+        num_feature_map = len(self.configer.get_scaled_anchor_list())
         self.stride=stride
         bs = prediction.size(0)
         total_anchors = prediction.size(1) #10647[507,2028,8112]
-        feature_map_size_list = [int((self.img_size / self.stride) * pow(2,i)) for i in range(self.num_feature_map)] 
+        feature_map_size_list = [int((self.img_size / self.stride) * pow(2,i)) for i in range(num_feature_map)] 
 
-        mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self.get_target(targets, total_anchors,
-                                                                        bs, feature_map_size_list,
-                                                                        self.ignore_threshold)
+        mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self._get_target(targets, total_anchors,
+                                                                        bs, feature_map_size_list, num_feature_map)
         tx = tx.unsqueeze(2)
         ty = ty.unsqueeze(2)
         tw = tw.unsqueeze(2)

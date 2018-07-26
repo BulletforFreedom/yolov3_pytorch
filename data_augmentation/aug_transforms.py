@@ -15,7 +15,7 @@ import matplotlib
 import numpy as np
 from PIL import Image, ImageFilter, ImageOps
 
-from utils.tools.logger import Logger as Log
+from logger import Logger as Log
 
 
 class RandomPad(object):

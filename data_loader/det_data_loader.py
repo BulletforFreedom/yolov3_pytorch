@@ -12,10 +12,10 @@ import torch
 from torch.utils import data
 
 import data_augmentation.aug_transforms as aug_trans
-import datasets.tools.transforms as trans
-from datasets.det.ssd_data_loader import SSDDataLoader
-from datasets.det.fr_data_loader import FRDataLoader
-from utils.tools.logger import Logger as Log
+#import datasets.tools.transforms as trans
+#from datasets.det.ssd_data_loader import SSDDataLoader
+from data_loader.fr_data_loader import FRDataLoader
+from logger import Logger as Log
 
 
 class DetDataLoader(object):
@@ -23,17 +23,18 @@ class DetDataLoader(object):
     def __init__(self, configer):
         self.configer = configer
 
-        self.aug_train_transform = aug_trans.AugCompose(self.configer, split='train')
+        #self.aug_train_transform = aug_trans.AugCompose(self.configer, split='train')
 
-        self.aug_val_transform = aug_trans.AugCompose(self.configer, split='val')
-
+        #self.aug_val_transform = aug_trans.AugCompose(self.configer, split='val')
+        '''
         self.img_transform = trans.Compose([
             trans.ToTensor(),
-            trans.Normalize(mean=self.configer.get('trans_params', 'mean'),
-                            std=self.configer.get('trans_params', 'std')), ])
-
-    def get_trainloader(self):
+            trans.Normalize(mean=self.configer.get_dataset_mean(),
+                            std=self.configer.get_dataset_std()) ])
+        '''
+    def get_loader(self):
         if self.configer.get('method') == 'single_shot_detector':
+            '''
             trainloader = data.DataLoader(
                 SSDDataLoader(root_dir=os.path.join(self.configer.get('data', 'data_dir'), 'train'),
                               aug_transform=self.aug_train_transform,
@@ -43,8 +44,9 @@ class DetDataLoader(object):
                 num_workers=self.configer.get('data', 'workers'), collate_fn=self._detection_collate, pin_memory=True)
 
             return trainloader
-
+            '''
         elif self.configer.get('method') == 'faster_rcnn':
+            '''
             trainloader = data.DataLoader(
                 FRDataLoader(root_dir=os.path.join(self.configer.get('data', 'data_dir'), 'train'),
                              aug_transform=self.aug_train_transform,
@@ -54,15 +56,27 @@ class DetDataLoader(object):
                 num_workers=self.configer.get('data', 'workers'), collate_fn=self._detection_collate, pin_memory=True)
 
             return trainloader
-        
-        elif self.configer.get('method') == 'yolov3':
+            '''
+        elif self.configer.get_method() == 'yolov3':
+            if self.configer.get_train():
+                bs=self.configer.get_batch_size
+                train_info='train'
+                #aug_transform=self.aug_train_transform
+                #img_transform=self.img_transform
+                shuffle=True
+            else:
+                bs=1
+                train_info='val'
+                #aug_transform=self.aug_val_transform
+                #img_transform=self.img_transform
+                shuffle=False
             trainloader = data.DataLoader(
-                FRDataLoader(root_dir=os.path.join(self.configer.get('data', 'data_dir'), 'train'),
+                FRDataLoader(root_dir=os.path.join(self.configer.get_data_dir(), train_info),
                              aug_transform=None,
                              img_transform=None,
                              configer=self.configer),
-                batch_size=self.configer.get('data', 'train_batch_size'), shuffle=True,
-                num_workers=self.configer.get('data', 'workers'), collate_fn=self._detection_collate, pin_memory=True)
+                batch_size=bs, shuffle=shuffle,
+                num_workers=8, collate_fn=self._detection_collate, pin_memory=True)
 
             return trainloader
 
@@ -72,6 +86,7 @@ class DetDataLoader(object):
 
     def get_valloader(self):
         if self.configer.get('method') == 'single_shot_detector':
+            '''
             valloader = data.DataLoader(
                 SSDDataLoader(root_dir=os.path.join(self.configer.get('data', 'data_dir'), 'val'),
                               aug_transform=self.aug_val_transform,
@@ -81,8 +96,10 @@ class DetDataLoader(object):
                 num_workers=self.configer.get('data', 'workers'), collate_fn=self._detection_collate, pin_memory=True)
 
             return valloader
+            '''
 
         elif self.configer.get('method') == 'faster_rcnn':
+            '''
             valloader = data.DataLoader(
                 FRDataLoader(root_dir=os.path.join(self.configer.get('data', 'data_dir'), 'val'),
                              aug_transform=self.aug_val_transform,
@@ -92,6 +109,7 @@ class DetDataLoader(object):
                 num_workers=self.configer.get('data', 'workers'), collate_fn=self._detection_collate, pin_memory=True)
 
             return valloader
+            '''
 
         else:
             Log.error('Method: {} loader is invalid.'.format(self.configer.get('method')))

@@ -30,11 +30,10 @@ class EmptyLayer(nn.Module):
         return self.anchors
      
 class DetectionLayer(nn.Module):
-    def __init__(self, anchors, inp_dim, num_classes, CUDA=True):
+    def __init__(self, anchors, configer, CUDA=True):
         super(DetectionLayer,self).__init__()
         self.anchors=anchors
-        self.inp_dim=inp_dim
-        self.num_classes=num_classes
+        self.configer=configer
         self.CUDA=CUDA
         self.stride=-1
         self.scaled_anchors=[]
@@ -49,13 +48,19 @@ class DetectionLayer(nn.Module):
         #inp_dim: weith or height of input image
         #stride: Scaling ratio
         batch_size = prediction.size(0)
-        self.stride=self.inp_dim//prediction.size(2)
+        self.stride=self.configer.get_inp_dim()//prediction.size(2)
         grid_size=prediction.size(2)
-        bbox_attrs = 5 + self.num_classes
+        bbox_attrs = 5 + self.configer.get_num_classes()
         num_anchors = len(self.anchors)
         
         if len(self.scaled_anchors)==0:
             self.scaled_anchors = [(a[0]/self.stride, a[1]/self.stride) for a in self.anchors]
+            self.configer.set_scaled_anchor_list(self.scaled_anchors)
+            #log space transform height and the width
+            self.scaled_anchors=t.FloatTensor(self.scaled_anchors)
+            if self.CUDA:
+                self.scaled_anchors=self.scaled_anchors.cuda()
+            self.scaled_anchors=self.scaled_anchors.repeat(grid_size*grid_size,1).unsqueeze(0)
         
         prediction = prediction.view(batch_size,bbox_attrs*num_anchors,grid_size*grid_size)
         prediction = prediction.transpose(1,2).contiguous()
@@ -74,18 +79,14 @@ class DetectionLayer(nn.Module):
         x_y_offset=t.cat((x_offset,y_offset),1).repeat(1,num_anchors).view(-1,2).unsqueeze(0)
         prediction[:,:,:2] += x_y_offset
         
-        #log space transform height and the width
-        self.scaled_anchors=t.FloatTensor(self.scaled_anchors)
-        if self.CUDA:
-            self.scaled_anchors=self.scaled_anchors.cuda()
-        scaled_anchors=self.scaled_anchors.repeat(grid_size*grid_size,1).unsqueeze(0)
-        prediction[:,:,2:4]=t.exp(prediction[:,:,2:4])*scaled_anchors 
+        
+        prediction[:,:,2:4]=t.exp(prediction[:,:,2:4])*self.scaled_anchors 
         
         prediction[:,:,:4] *= self.stride
         
         #Sigmoid the object confidencce
         prediction[:,:,4] = t.sigmoid(prediction[:,:,4])
         #Softmax the class scores
-        prediction[:,:,5: 5 + self.num_classes] = t.sigmoid(prediction[:,:, 5 : 5 + self.num_classes])
+        prediction[:,:,5: 5 + self.configer.get_num_classes()] = t.sigmoid(prediction[:,:, 5 : 5 + self.configer.get_num_classes()])
         
         return prediction
