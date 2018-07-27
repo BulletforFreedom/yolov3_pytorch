@@ -14,14 +14,15 @@ from torch.utils import data
 import data_augmentation.aug_transforms as aug_trans
 import data_loader.transforms as trans
 #from datasets.det.ssd_data_loader import SSDDataLoader
-from data_loader.fr_data_loader import FRDataLoader
+from data_loader.fr_data_loader import YoloDataLoader
 from logger import Logger as Log
 
 
 class DetDataLoader(object):
 
-    def __init__(self, configer):
+    def __init__(self, configer, is_debug=False):
         self.configer = configer
+        self.is_debug = is_debug
 
         #self.aug_train_transform = aug_trans.AugCompose(self.configer, split='train')
 
@@ -69,14 +70,20 @@ class DetDataLoader(object):
                 train_info='val'
                 #aug_transform=self.aug_val_transform
                 shuffle=False
+                
+            if self.is_debug:
+                detection_collate = self._detection_collate_debug
+            else:
+                detection_collate=self._detection_collate
+                
             trainloader = data.DataLoader(
-                FRDataLoader(root_dir=os.path.join(self.configer.get_data_dir(), train_info),
+                YoloDataLoader(root_dir=os.path.join(self.configer.get_data_dir(), train_info),
                              aug_transform=None,
                              img_transform=self.img_transform,
                              configer=self.configer),
                 batch_size=bs, shuffle=shuffle,
                 num_workers=self.configer.get_num_workers(), 
-                collate_fn=self._detection_collate, pin_memory=True)
+                collate_fn=detection_collate, pin_memory=True)
             return trainloader
 
         else:
@@ -129,12 +136,35 @@ class DetDataLoader(object):
         imgs = []
         bboxes = []
         labels = []
-        img_size =[]
         for sample in batch:
             imgs.append(sample[0])
-            img_size.append(sample[1])
             bboxes.append(sample[2])
             labels.append(sample[3])
             
 
-        return torch.stack(imgs, 0), img_size, bboxes, labels
+        return torch.stack(imgs, 0), bboxes, labels
+
+    @staticmethod
+    def _detection_collate_debug(batch):
+        """Custom collate fn for dealing with batches of images that have a different
+            number of associated object annotations (bounding boxes).
+            Arguments:
+                batch: (tuple) A tuple of tensor images and lists of annotations
+            Return:
+                A tuple containing:
+                    1) (tensor) batch of images stacked on their 0 dim
+                    2) (list of tensors) annotations for a given image are stacked on
+                                         0 dim
+            """
+        imgs = []
+        bboxes = []
+        labels = []
+        img_dir_list = []
+        for sample in batch:
+            imgs.append(sample[0])
+            img_dir_list.append(sample[1])
+            bboxes.append(sample[2])
+            labels.append(sample[3])
+            
+
+        return torch.stack(imgs, 0), img_dir_list, bboxes, labels

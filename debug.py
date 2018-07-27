@@ -22,23 +22,9 @@ import detector
 import util as ut
 from cfg.tools.configer import Configer
 from data_loader.det_data_loader import DetDataLoader as DataLoader
-
-#class debug_truth(object):
-    #def __init__(self):
         
-if __name__=='__main__':
+if __name__=='__main__':    
     
-    # DataLoader
-    '''
-    dataloader1 = t.utils.data.DataLoader(COCODataset("/home/lsk/Downloads/YOLOv3_PyTorch/data/coco/trainvalno5k.txt",
-                                         (416, 416), is_training=True),
-                                         batch_size=1, shuffle=False, num_workers=32, pin_memory=True)
-    for step, samples in enumerate(dataloader1):
-        images1, labels1 = samples["image"], samples["label"]
-        print(images1.size())
-        print(labels1.shape)
-        break
-    '''
     cfg=Configer("./cfg/yolov3.cfg")
     net_info=cfg.get_net_info()
     blocks=cfg.get_blocks()
@@ -51,40 +37,28 @@ if __name__=='__main__':
     if t.cuda.is_available():        
         model.cuda()      
         
-    dataloader = DataLoader(cfg)
+    dataloader = DataLoader(cfg, True)
         
     loss_function = YOLO3Loss(cfg)
 
     # Start the training loop
     
-    train_loader = dataloader.get_loader()
+    debug_loader = dataloader.get_loader()
     
     for epoch in range(1):
-        for step, (images, img_size, bboxes, labels) in enumerate(train_loader):
+        for step, (images, img_dir_list, gt_bboxes, gt_labels) in enumerate(debug_loader):
 
             images=images.cuda()            
             prediction = model(images)
             #loss=loss_function(prediction, labels, model.stride)
-            break
-            labels=loss_function.debug_loss(prediction, labels)
-            labels=labels.cuda()
+            origin_results=loss_function.debug_loss(prediction, gt_labels, gt_bboxes)
+            origin_results=origin_results.cuda()
             DK=detector.DK_Output()
-            results=DK.write_results(labels, cfg.get_num_classes())
+            results=DK.write_results(origin_results, cfg.get_num_classes())
             results=results.cpu().numpy()
             t.cuda.empty_cache()
-            break
-            img_names=['COCO_train2014_000000000009.jpg',
-                      'COCO_train2014_000000000025.jpg',
-                      'COCO_train2014_000000000030.jpg',
-                      'COCO_train2014_000000000034.jpg',
-                      'COCO_train2014_000000000036.jpg',
-                      'COCO_train2014_000000000049.jpg',
-                      'COCO_train2014_000000000061.jpg',
-                      'COCO_train2014_000000000064.jpg',
-                      'COCO_train2014_000000000071.jpg',
-                      'COCO_train2014_000000000072.jpg']
-            for i, img_name in enumerate(img_names):
-                img_dir = os.path.join('/home/lsk/Downloads/YOLOv3_PyTorch/data/coco/images/train2014/',img_name)
+            
+            for i, img_dir in enumerate(img_dir_list):
                 im = cv2.imread(img_dir)
                 im_gt = im.copy()            
                 gt_boxes = [[x[1], x[2], x[3], x[4]] for x in results if x[0]==i]
@@ -104,26 +78,4 @@ if __name__=='__main__':
                         cv2.destroyWindow(win_name)
                     except:
                         cv2.destroyAllWindows()
-                        break
-            #cv2.imwrite('001_new.jpg', im)
-            '''
-            for i, image in enumerate(images.cpu()):
-                image = image.numpy()
-                box_list=[]
-                for l in result:
-                    if l.sum() == 0 or int(l[0]) != i:
-                        continue
-                    box_list.append(l)
-                gt_boxes = [[x[1], x[2], x[3], x[4]] for x in box_list]
-                gt_class_ids=[int(x[-1]) for x in box_list]
-                im = ut.plot_bb(image,gt_boxes,gt_class_ids,model.inp_dim)
-                    #x1 = int((l[1] - l[3] / 2) * w)
-                    #y1 = int((l[2] - l[4] / 2) * h)
-                    #x2 = int((l[1] + l[3] / 2) * w)
-                    #y2 = int((l[2] + l[4] / 2) * h)                    
-                    #cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 255))
-                #image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-                cv2.imwrite("step{}_{}.jpg".format(step, i), image)
-            '''
-            if step==0:
-                break
+                        break            

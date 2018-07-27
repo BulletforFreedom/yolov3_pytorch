@@ -22,11 +22,11 @@ from data_loader.det_transforms import ResizeBoxes
 from logger import Logger as Log
 
 
-class FRDataLoader(data.Dataset):
+class YoloDataLoader(data.Dataset):
 
     def __init__(self, root_dir=None, aug_transform=None,
                  img_transform=None, configer=None):
-        super(FRDataLoader, self).__init__()
+        super(YoloDataLoader, self).__init__()
         self.img_list, self.json_list = self.__list_dirs(root_dir)
         self.configer = configer
         self.aug_transform = aug_transform
@@ -35,10 +35,11 @@ class FRDataLoader(data.Dataset):
     
     def __getitem__(self, index):
         #img = Image.open(self.img_list[index]).convert('RGB')
+        img_dir=self.img_list[index]
         img = cv2.imread(self.img_list[index])
         img=cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        labels, bboxes, img_size = self.__read_json_file(self.json_list[index])
+        labels, bboxes = self.__read_json_file(self.json_list[index])
 
         if self.aug_transform is not None:
             img, bboxes = self.aug_transform(img, bboxes=bboxes)
@@ -50,7 +51,7 @@ class FRDataLoader(data.Dataset):
         if self.img_transform is not None:
             img = self.img_transform(img)
 
-        return img, img_size, bboxes, labels
+        return img, img_dir, bboxes, labels
     
 
     def __len__(self):
@@ -65,7 +66,7 @@ class FRDataLoader(data.Dataset):
         """
         json_dict = JsonHelper.load_file(json_file)
 
-        img_size = [json_dict['width'], json_dict['height']]
+        #img_size = [json_dict['width'], json_dict['height']]
         
         labels = list()
         bboxes = list()
@@ -74,7 +75,7 @@ class FRDataLoader(data.Dataset):
             labels.append(object['label'])
             bboxes.append(object['bbox'])
 
-        return labels, bboxes, img_size
+        return labels, bboxes
 
     def __list_dirs(self, root_dir):
         img_list = list()

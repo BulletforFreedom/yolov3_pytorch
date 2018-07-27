@@ -7,6 +7,8 @@ import numpy as np
 from boxes.boxes import Boxes as bbox
 from net.darknet import Darknet
 from common.coco_dataset import COCODataset
+from cfg.tools.configer import Configer
+from data_loader.det_data_loader import DetDataLoader as DataLoader
 
 class YOLO3Loss(nn.Module):
     def __init__(self, configer):
@@ -27,7 +29,7 @@ class YOLO3Loss(nn.Module):
         self.mse_loss = nn.MSELoss()
         self.bce_loss = nn.BCELoss()
 
-    def forward(self, prediction, targets):
+    def forward(self, prediction, labels, bboxes):
         
         stride=self.configer.get_total_strides()
         num_feature_map = len(self.configer.get_scaled_anchor_list())
@@ -44,7 +46,7 @@ class YOLO3Loss(nn.Module):
         conf = prediction[..., 4]       # Conf
         pred_cls = prediction[..., 5:]  # Cls pred.
 
-        mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self._get_target(targets, total_anchors,
+        mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self._get_target(labels, bboxes, total_anchors,
                                                                         bs, feature_map_size_list, num_feature_map)
         mask, noobj_mask = mask.cuda(), noobj_mask.cuda()
         tx, ty, tw, th = tx.cuda(), ty.cuda(), tw.cuda(), th.cuda()
@@ -64,7 +66,7 @@ class YOLO3Loss(nn.Module):
             #loss_h.item(), loss_conf.item(), loss_cls.item()
         
     
-    def _get_target(self, target, total_anchors, bs, feature_map_size_list, num_feature_map):
+    def _get_target(self, labels, bboxes, total_anchors, bs, feature_map_size_list, num_feature_map):
         '''
         noobj_mask: mask the non-object anchor boxes which ious are less than threshold
         mask: mark the object anchor boxes with best iou
@@ -89,19 +91,17 @@ class YOLO3Loss(nn.Module):
                                          len(scaled_anchor_list[i]) * feature_map_size_list[i] ** 2)
         
         for b in range(bs):
-            for n in range(target.shape[1]):
-                if target[b, n].sum() == 0:
-                    continue
+            for n, label in enumerate(labels[b]):                
 
                 best_iou_list=[]
                 best_iou_index_list=[]
                 gi_j_list = []
                 for m in range(num_feature_map):
                     # Convert to position relative to box
-                    gx = target[b, n, 1] * feature_map_size_list[m]
-                    gy = target[b, n, 2] * feature_map_size_list[m]
-                    gw = target[b, n, 3] * feature_map_size_list[m]
-                    gh = target[b, n, 4] * feature_map_size_list[m]
+                    gx = bboxes[b][n][0] * feature_map_size_list[m]
+                    gy = bboxes[b][n][1] * feature_map_size_list[m]
+                    gw = bboxes[b][n][2] * feature_map_size_list[m]
+                    gh = bboxes[b][n][3] * feature_map_size_list[m]
                     
                     # Get grid box indices
                     gi = int(gx)
@@ -136,40 +136,40 @@ class YOLO3Loss(nn.Module):
                 # Coordinates
                 tx[b, last_num_anchors_list[best_iou_feature_index]\
                          + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
-                         + best_iou_index] = target[b, n, 1] * self.img_size
+                         + best_iou_index] = bboxes[b][n][0] * self.img_size
                 ty[b, last_num_anchors_list[best_iou_feature_index]\
                          + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
-                         + best_iou_index] = target[b, n, 2] * self.img_size
+                         + best_iou_index] = bboxes[b][n][1] * self.img_size
                 # Width and height
                 tw[b, last_num_anchors_list[best_iou_feature_index]\
                          + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
-                         + best_iou_index] = target[b, n, 3] * self.img_size
+                         + best_iou_index] = bboxes[b][n][2] * self.img_size
                 th[b, last_num_anchors_list[best_iou_feature_index]\
                          + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
-                         + best_iou_index] = target[b, n, 4] * self.img_size                
+                         + best_iou_index] = bboxes[b][n][3] * self.img_size                
                 weight_w_h[b, last_num_anchors_list[best_iou_feature_index]\
                          + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
-                         + best_iou_index] = 2-target[b, n, 3]*target[b, n, 4]
+                         + best_iou_index] = 2-bboxes[b][n][2]*bboxes[b][n][3]
                 tconf[b, last_num_anchors_list[best_iou_feature_index]\
                          + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
                          + best_iou_index] = 1#float(np.max(best_iou_list))
                 # One-hot encoding of label
                 tcls[b, last_num_anchors_list[best_iou_feature_index]\
                          + len(scaled_anchor_list[m]) * gi_j_list[best_iou_feature_index][0] * gi_j_list[best_iou_feature_index][1]\
-                         + best_iou_index, int(target[b, n, 0])] = 1
+                         + best_iou_index, label] = 1
                     
                     
 
         return mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls
         
-    def debug_loss(self, prediction, targets):
+    def debug_loss(self, prediction, labels, bboxes):
         num_feature_map = len(self.configer.get_scaled_anchor_list())
         stride=self.configer.get_total_strides()
         bs = prediction.size(0)
         total_anchors = prediction.size(1) #10647[507,2028,8112]
         feature_map_size_list = [int((self.img_size / stride) * pow(2,i)) for i in range(num_feature_map)] 
-
-        mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self._get_target(targets, total_anchors,
+        
+        mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self._get_target(labels, bboxes, total_anchors,
                                                                         bs, feature_map_size_list, num_feature_map)
         tx = tx.unsqueeze(2)
         ty = ty.unsqueeze(2)
@@ -184,28 +184,34 @@ class YOLO3Loss(nn.Module):
 if __name__ == '__main__':
     
     # DataLoader
+    '''
     dataloader = t.utils.data.DataLoader(COCODataset("/home/lsk/Downloads/YOLOv3_PyTorch/data/coco/trainvalno5k.txt",
                                          (416, 416), is_training=True),
                                          batch_size=2, shuffle=True, num_workers=32, pin_memory=True)
+    '''
+    cfg=Configer("../cfg/yolov3.cfg")
     
-    model = Darknet("../cfg/yolov3.cfg")
+    model = Darknet(cfg)
     #model.load_weights("../yolov3.weights")
     
     model.train(True)
     #model = nn.DataParallel(model)
     if t.cuda.is_available():        
         model.cuda()        
-    loss_function = YOLO3Loss(model.anchor_list, model.scaled_anchor_list, model.num_classes, model.inp_dim, model.iou_threshold)
+        
+    dataloader = DataLoader(cfg)
+    train_loader = dataloader.get_loader()
+    loss_function = YOLO3Loss(cfg)
 
     # Start the training loop
     
     for epoch in range(1):
-        for step, samples in enumerate(dataloader):
-            images, labels = samples["image"], samples["label"]
+        for step, (images, img_size, gt_bboxes, gt_labels) in enumerate(train_loader):
             images=images.cuda()
-            labels=labels.cuda()
+            gt_labels=gt_labels
+            gt_bboxes=gt_bboxes
             prediction = model(images)
-            loss=loss_function(prediction, labels, model.stride)
+            loss=loss_function(prediction, gt_labels, gt_bboxes)
             if step==0:
                 break
     

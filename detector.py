@@ -37,7 +37,7 @@ class DK_Output:
     
 
     
-    def write_results(self, prediction, num_classes, confidence=0.5, nms_conf = 0.7, nms = True):
+    def write_results(self, prediction, num_classes, confidence=0.5, nms_conf = 0.7):
         conf_mask=(prediction[:,:,4]>confidence).float().unsqueeze(2)
         prediction=prediction*conf_mask
         
@@ -89,7 +89,7 @@ class DK_Output:
                 conf_sort_index=torch.sort(image_pred_class[:,4],descending=True)[1]
                 image_pred_class=image_pred_class[conf_sort_index]
                 #num = image_pred_class.size(0)#Number of detections
-                if nms:#and image_pred_class.size(0)>1
+                if nms_conf !=0:#and image_pred_class.size(0)>1
                     image_pred_class=bbox.get_nms(image_pred_class,nms_conf)
                     
                 #Concatenate the batch_id of the image to the detection
