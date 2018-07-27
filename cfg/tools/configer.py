@@ -55,23 +55,23 @@ class Configer(object):
     def get_scaled_anchor_list(self):
         return self.net_info['scaled_anchor_list']
     
-    def get_method():
-        return data_info['method']
+    def get_method(self):
+        return self.net_info['method']
     
-    def get_batch_size():
-        return data_info['batch_size']
+    def get_batch_size(self):
+        return int(self.net_info['batch_size'])
     
-    def get_dataset_mean():
-        return data_info['mean']
+    def get_dataset_mean(self):
+        return self.net_info['dataset']['mean']
     
-    def get_dataset_std():
-        return data_info['std']
+    def get_dataset_std(self):
+        return self.net_info['dataset']['std']
     
     def get_dataset_name_seq(self):
         return self.net_info['dataset']['name_seq']
     
-    def get_data_dir():
-        return data_info['data_dir']
+    def get_data_dir(self):
+        return self.net_info['dataset']['data_dir']
     
     def _parse_cfg(self):
         """

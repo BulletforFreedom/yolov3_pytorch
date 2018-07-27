@@ -9,12 +9,15 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-
+#from PIL import Image
+import cv2
+import numpy as np
+import torch
 import torch.utils.data as data
 from data_loader.json_helper import JsonHelper
 
 #from datasets.det.det_data_utilizer import DetDataUtilizer
-#from datasets.tools.det_transforms import ResizeBoxes
+from data_loader.det_transforms import ResizeBoxes
 #from utils.helpers.image_helper import ImageHelper
 from logger import Logger as Log
 
@@ -29,22 +32,26 @@ class FRDataLoader(data.Dataset):
         self.aug_transform = aug_transform
         self.img_transform = img_transform
         #self.det_data_utilizer = DetDataUtilizer(configer)
-    '''
+    
     def __getitem__(self, index):
-        img = ImageHelper.pil_open_rgb(self.img_list[index])
+        #img = Image.open(self.img_list[index]).convert('RGB')
+        img = cv2.imread(self.img_list[index])
+        img=cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
         labels, bboxes = self.__read_json_file(self.json_list[index])
 
         if self.aug_transform is not None:
             img, bboxes = self.aug_transform(img, bboxes=bboxes)
 
-        img, bboxes, labels = ResizeBoxes()(img, bboxes, labels)
+        #img, bboxes, labels = ResizeBoxes()(img, bboxes, labels)
+        labels = torch.from_numpy(np.array(labels)).long()
+        bboxes = torch.from_numpy(np.array(bboxes)).float()
 
         if self.img_transform is not None:
             img = self.img_transform(img)
 
         return img, bboxes, labels
-    '''
+    
 
     def __len__(self):
 

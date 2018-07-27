@@ -21,7 +21,7 @@ from layer.loss_function import YOLO3Loss
 import detector
 import util as ut
 from cfg.tools.configer import Configer
-#from data_loader.det_data_loader import DetDataLoader as DataLoader
+from data_loader.det_data_loader import DetDataLoader as DataLoader
 
 #class debug_truth(object):
     #def __init__(self):
@@ -29,10 +29,16 @@ from cfg.tools.configer import Configer
 if __name__=='__main__':
     
     # DataLoader
-    dataloader = t.utils.data.DataLoader(COCODataset("/home/lsk/Downloads/YOLOv3_PyTorch/data/coco/trainvalno5k.txt",
+    '''
+    dataloader1 = t.utils.data.DataLoader(COCODataset("/home/lsk/Downloads/YOLOv3_PyTorch/data/coco/trainvalno5k.txt",
                                          (416, 416), is_training=True),
-                                         batch_size=10, shuffle=False, num_workers=32, pin_memory=True)
-    
+                                         batch_size=1, shuffle=False, num_workers=32, pin_memory=True)
+    for step, samples in enumerate(dataloader1):
+        images, labels = samples["image"], samples["label"]
+        print(images.size())
+        print(labels.shape)
+        break
+    '''
     cfg=Configer("./cfg/yolov3_train.cfg")
     net_info=cfg.get_net_info()
     blocks=cfg.get_blocks()
@@ -45,15 +51,21 @@ if __name__=='__main__':
     if t.cuda.is_available():        
         model.cuda()      
         
-    #dataloader = DataLoader(model.get_net_info())
+    dataloader = DataLoader(cfg)
         
     loss_function = YOLO3Loss(cfg)
 
     # Start the training loop
     
+    train_loader = dataloader.get_loader()
+    
     for epoch in range(1):
-        for step, samples in enumerate(dataloader):
-            images, labels = samples["image"], samples["label"]
+        for step, (images, bboxes, labels) in enumerate(train_loader):
+
+            print(images.shape)
+            print(bboxes[0].size())
+            print(labels[0])
+            break
             images=images.cuda()            
             prediction = model(images)
             #loss=loss_function(prediction, labels, model.stride)
@@ -63,6 +75,7 @@ if __name__=='__main__':
             results=DK.write_results(labels, cfg.get_num_classes())
             results=results.cpu().numpy()
             t.cuda.empty_cache()
+            break
             img_names=['COCO_train2014_000000000009.jpg',
                       'COCO_train2014_000000000025.jpg',
                       'COCO_train2014_000000000030.jpg',

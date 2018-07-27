@@ -12,7 +12,7 @@ import torch
 from torch.utils import data
 
 import data_augmentation.aug_transforms as aug_trans
-#import datasets.tools.transforms as trans
+import data_loader.transforms as trans
 #from datasets.det.ssd_data_loader import SSDDataLoader
 from data_loader.fr_data_loader import FRDataLoader
 from logger import Logger as Log
@@ -26,14 +26,15 @@ class DetDataLoader(object):
         #self.aug_train_transform = aug_trans.AugCompose(self.configer, split='train')
 
         #self.aug_val_transform = aug_trans.AugCompose(self.configer, split='val')
-        '''
-        self.img_transform = trans.Compose([
-            trans.ToTensor(),
-            trans.Normalize(mean=self.configer.get_dataset_mean(),
-                            std=self.configer.get_dataset_std()) ])
-        '''
+        
+        self.img_transform = trans.Compose()
+        self.img_transform.add(trans.ResizeImage(self.configer.get_inp_dim()))
+        self.img_transform.add(trans.ToTensor())
+        self.img_transform.add(trans.Normalize(self.configer.get_dataset_mean(),
+                                               self.configer.get_dataset_std()))
+        
     def get_loader(self):
-        if self.configer.get('method') == 'single_shot_detector':
+        if self.configer.get_method() == 'single_shot_detector':
             '''
             trainloader = data.DataLoader(
                 SSDDataLoader(root_dir=os.path.join(self.configer.get('data', 'data_dir'), 'train'),
@@ -45,7 +46,7 @@ class DetDataLoader(object):
 
             return trainloader
             '''
-        elif self.configer.get('method') == 'faster_rcnn':
+        elif self.configer.get_method() == 'faster_rcnn':
             '''
             trainloader = data.DataLoader(
                 FRDataLoader(root_dir=os.path.join(self.configer.get('data', 'data_dir'), 'train'),
@@ -58,8 +59,8 @@ class DetDataLoader(object):
             return trainloader
             '''
         elif self.configer.get_method() == 'yolov3':
-            if self.configer.get_train():
-                bs=self.configer.get_batch_size
+            if self.configer.is_train():
+                bs=self.configer.get_batch_size()
                 train_info='train'
                 #aug_transform=self.aug_train_transform
                 #img_transform=self.img_transform
@@ -73,11 +74,10 @@ class DetDataLoader(object):
             trainloader = data.DataLoader(
                 FRDataLoader(root_dir=os.path.join(self.configer.get_data_dir(), train_info),
                              aug_transform=None,
-                             img_transform=None,
+                             img_transform=self.img_transform,
                              configer=self.configer),
                 batch_size=bs, shuffle=shuffle,
-                num_workers=8, collate_fn=self._detection_collate, pin_memory=True)
-
+                num_workers=1, collate_fn=self._detection_collate, pin_memory=True)
             return trainloader
 
         else:
