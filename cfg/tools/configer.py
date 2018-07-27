@@ -6,13 +6,13 @@ class Configer(object):
         self.cfgfile=cfgfile
         self.blocks = []
         self.net_info=None
-        self.parse_cfg()
-        #self.net_info['dataset']=data_info
+        self._parse_cfg()
+        self.net_info['dataset']=data_info
         self.net_info['strides'] = -1
         self.net_info['scaled_anchor_list'] = []
         self.net_info['anchor_list'] = []
         
-    def set_strides(self, strides):
+    def set_total_strides(self, strides):
         self.net_info['strides'] = strides
         
     def set_scaled_anchor_list(self, scaled_anchor_list):
@@ -43,7 +43,7 @@ class Configer(object):
     def get_iou_threshold(self):
         return float(self.net_info['ignore_iou_thresh'])
     
-    def get_strides(self):
+    def get_total_strides(self):
         return self.net_info['strides']
     
     def get_anchors(self):
@@ -67,13 +67,13 @@ class Configer(object):
     def get_dataset_std():
         return data_info['std']
     
-    def get_dataset_name_seq():
-        return data_info['name_seq']
+    def get_dataset_name_seq(self):
+        return self.net_info['dataset']['name_seq']
     
     def get_data_dir():
         return data_info['data_dir']
     
-    def parse_cfg(self):
+    def _parse_cfg(self):
         """
         Takes a configuration file
         
@@ -105,5 +105,5 @@ class Configer(object):
         self.net_info=self.blocks.pop(0)
 
 if __name__ == '__main__':
-    cfg=Configer("../yolov3_train.cfg")
+    cfg=Configer("../yolov3.cfg")
     net_info=cfg.get_net_info()

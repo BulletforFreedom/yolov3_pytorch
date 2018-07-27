@@ -67,8 +67,17 @@ class DK_Output:
                 image_pred_ = image_pred[non_zero_ind,:]
             except:
                 continue #if there is no result,
-            
-            img_classes=self._unique(image_pred_[:,-1])
+            try:
+                img_classes=self._unique(image_pred_[:,-1])
+            except:
+                seq = torch.FloatTensor([i]).cuda(), image_pred_
+                if not write:
+                    output = torch.cat(seq).unsqueeze(0)
+                    write = True
+                else:
+                    out = torch.cat(seq).unsqueeze(0)
+                    output = torch.cat((output,out))                
+                continue
             
             for cls in img_classes:#get the detections with one particular class
                 

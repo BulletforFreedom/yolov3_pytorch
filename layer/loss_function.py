@@ -16,9 +16,6 @@ class YOLO3Loss(nn.Module):
         self.num_classes = self.configer.get_num_classes()
         self.bbox_attrs = 5 + self.num_classes
         self.img_size = self.configer.get_inp_dim()    #416
-        self.stride=self.configer.get_strides()
-
-        self.ignore_threshold = self.configer.get_iou_threshold()
 
         '''
         self.coord_scale = loss_lambda[0]
@@ -32,11 +29,12 @@ class YOLO3Loss(nn.Module):
 
     def forward(self, prediction, targets):
         
+        stride=self.configer.get_total_strides()
         num_feature_map = len(self.configer.get_scaled_anchor_list())
 
         bs = prediction.size(0)
         total_anchors = prediction.size(1) #10647[507,2028,8112]
-        feature_map_size_list = [int((self.img_size / self.stride) * pow(2,i)) for i in range(num_feature_map)]
+        feature_map_size_list = [int((self.img_size / stride) * pow(2,i)) for i in range(num_feature_map)]
                 
         # Get outputs
         x = prediction[..., 0]          # Center x
@@ -118,7 +116,7 @@ class YOLO3Loss(nn.Module):
                     anch_ious = bbox.bbox_iou(gt_box, anchor_shapes)
                     # Where the overlap is larger than threshold set mask to zero (ignore)
                     for i in range(anch_ious.size()[0]):
-                        if anch_ious[i] > self.ignore_threshold:
+                        if anch_ious[i] > self.configer.get_iou_threshold():
                                 noobj_mask[b, (last_num_anchors_list[m] + len(scaled_anchor_list[m]) * gi * gj)+i] = 0
 
                     # Find the best matching anchor box
@@ -164,12 +162,12 @@ class YOLO3Loss(nn.Module):
 
         return mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls
         
-    def debug_loss(self, prediction, targets, stride):
+    def debug_loss(self, prediction, targets):
         num_feature_map = len(self.configer.get_scaled_anchor_list())
-        self.stride=stride
+        stride=self.configer.get_total_strides()
         bs = prediction.size(0)
         total_anchors = prediction.size(1) #10647[507,2028,8112]
-        feature_map_size_list = [int((self.img_size / self.stride) * pow(2,i)) for i in range(num_feature_map)] 
+        feature_map_size_list = [int((self.img_size / stride) * pow(2,i)) for i in range(num_feature_map)] 
 
         mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self._get_target(targets, total_anchors,
                                                                         bs, feature_map_size_list, num_feature_map)

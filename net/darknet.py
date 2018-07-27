@@ -31,22 +31,17 @@ class Darknet(nn.Module):
     '''
     def __init__(self, configer):
         super(Darknet, self).__init__()
-        self.anchor_list=[]
         self.configer=configer
         self.blocks = self.configer.get_blocks()
-        self.net_info = self.configer.get_net_info()
         self.module_list = self.create_modules()        
-        self.stride=-1
-        self.flag=0
+        
     
     
     def forward(self, x):
         detections=[]
         modules=[x['type'] for x in self.blocks]
         outputs={}
-        write=0
-        if len(self.configer.get_scaled_anchor_list())!=0:            
-            self.flag=1
+        write=0        
         
         for i in range(len(modules)):
             if modules[i]=='convolutional' or modules[i]=='upsample':
@@ -75,9 +70,7 @@ class Darknet(nn.Module):
                     continue
                 
                 if not write:
-                    detections=x
-                    if self.stride==-1:
-                        self.stride=self.module_list[i][0].stride
+                    detections=x                    
                     write=1
                 else:
                     detections = t.cat((detections, x), 1)
@@ -304,12 +297,12 @@ class Darknet(nn.Module):
                 mask=x['mask'].split(',')
                 mask=[int(x) for x in mask]
                 
-                anchors=self.net_info['anchors'].split(',')
+                anchors=self.configer.get_anchors().split(',')
                 anchors=[float(x) for x in anchors]
                 anchors=[(anchors[x],anchors[x+1]) for x in range(0,len(anchors),2)]
                 anchors=[anchors[x] for x in mask]            
                 
-                self.anchor_list.append(anchors)
+                #self.anchor_list.append(anchors)
                 
                 detection = DetectionLayer(anchors=anchors, 
                                            configer=self.configer,

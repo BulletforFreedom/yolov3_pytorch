@@ -25,7 +25,7 @@ def get_test_input(img_name,inp_dim):
     img_ = Variable(img_) # Convert to Variable
     return img_
 
-def plot_bb(im,bb,cls,inp_dim,textSize=4,textThickness=8):
+def plot_bb(im,bb,cls,inp_dim,textSize=1,textThickness=2):
     if im.shape[0]==3:
         im=im.transpose(1,2,0)#.contiguous()
     h,w,c = im.shape
@@ -37,7 +37,7 @@ def plot_bb(im,bb,cls,inp_dim,textSize=4,textThickness=8):
         y1 = int(max([0, (box[1]/inp_dim)*h ]))
         y2 = int(min([h, (box[3]/inp_dim)*h ]))        
 
-        cv2.rectangle(im,(x1,y1),(x2,y2),(0,0,255),2)
+        cv2.rectangle(im,(x1,y1),(x2,y2),(0,0,255),1)
         cv2.putText(im,
                     '%s'%(cls[idx]),
                     (x1,int(y1*1.1)),
@@ -48,4 +48,4 @@ def plot_bb(im,bb,cls,inp_dim,textSize=4,textThickness=8):
 
 if __name__ == '__main__':
     cfgfile='./cfg/yolov3.cfg'
-    print(111)
+    print(111)    

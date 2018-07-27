@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-
-import util as ut
-
 import numpy as np
-import cv2 
-import matplotlib.pyplot as plt
 
 import torch as t
 import torch.nn as nn
-from torch.autograd import Variable
-import torch.nn.functional as F
 
 from logger import Logger as log
+import util as ut
 
 class EmptyLayer(nn.Module):
     def __init__(self,shortcut_from=-1,route_start=-1,route_end=-1,anchors=[]):
@@ -49,6 +44,8 @@ class DetectionLayer(nn.Module):
         #stride: Scaling ratio
         batch_size = prediction.size(0)
         self.stride=self.configer.get_inp_dim()//prediction.size(2)
+        if self.configer.get_total_strides()==-1:
+            self.configer.set_total_strides(self.stride)
         grid_size=prediction.size(2)
         bbox_attrs = 5 + self.configer.get_num_classes()
         num_anchors = len(self.anchors)

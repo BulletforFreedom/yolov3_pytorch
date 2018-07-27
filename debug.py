@@ -5,8 +5,9 @@ Created on Wed Jul 18 16:48:50 2018
 
 @author: lsk
 """
-
 # -*- coding: utf-8 -*-
+import os
+
 import torch as t
 import torch.nn as nn
 import numpy as np
@@ -30,7 +31,7 @@ if __name__=='__main__':
     # DataLoader
     dataloader = t.utils.data.DataLoader(COCODataset("/home/lsk/Downloads/YOLOv3_PyTorch/data/coco/trainvalno5k.txt",
                                          (416, 416), is_training=True),
-                                         batch_size=1, shuffle=False, num_workers=32, pin_memory=True)
+                                         batch_size=10, shuffle=False, num_workers=32, pin_memory=True)
     
     cfg=Configer("./cfg/yolov3_train.cfg")
     net_info=cfg.get_net_info()
@@ -56,19 +57,45 @@ if __name__=='__main__':
             images=images.cuda()            
             prediction = model(images)
             #loss=loss_function(prediction, labels, model.stride)
-            labels=loss_function.debug_loss(prediction, labels, model.stride)
+            labels=loss_function.debug_loss(prediction, labels)
             labels=labels.cuda()
             DK=detector.DK_Output()
-            result=DK.write_results(labels, cfg.get_num_classes())
-            result=result.cpu().numpy()
+            results=DK.write_results(labels, cfg.get_num_classes())
+            results=results.cpu().numpy()
             t.cuda.empty_cache()
-            img_name='/home/lsk/Downloads/YOLOv3_PyTorch/data/coco/images/train2014/COCO_train2014_000000000009.jpg'
-            im = cv2.imread(img_name)
-            im_gt = im.copy()
-            gt_boxes = [[x[1], x[2], x[3], x[4]] for x in result]
-            gt_class_ids=[int(x[-1]) for x in result]
-            im = ut.plot_bb(im_gt,gt_boxes,gt_class_ids,cfg.get_inp_dim())
-            cv2.imwrite('001_new.jpg', im)
+            img_names=['COCO_train2014_000000000009.jpg',
+                      'COCO_train2014_000000000025.jpg',
+                      'COCO_train2014_000000000030.jpg',
+                      'COCO_train2014_000000000034.jpg',
+                      'COCO_train2014_000000000036.jpg',
+                      'COCO_train2014_000000000049.jpg',
+                      'COCO_train2014_000000000061.jpg',
+                      'COCO_train2014_000000000064.jpg',
+                      'COCO_train2014_000000000071.jpg',
+                      'COCO_train2014_000000000072.jpg']
+            for i, img_name in enumerate(img_names):
+                img_dir = os.path.join('/home/lsk/Downloads/YOLOv3_PyTorch/data/coco/images/train2014/',img_name)
+                im = cv2.imread(img_dir)
+                im_gt = im.copy()            
+                gt_boxes = [[x[1], x[2], x[3], x[4]] for x in results if x[0]==i]
+                gt_class_ids=[int(x[-1]) for x in results if x[0]==i]
+                gt_class_name=[ cfg.get_dataset_name_seq()[x] for x in gt_class_ids]
+                im = ut.plot_bb(im_gt,gt_boxes,gt_class_name,cfg.get_inp_dim())
+                win_name = '1'
+                cv2.imshow(win_name,im)
+                cv2.moveWindow(win_name,10,10)
+                
+                k = cv2.waitKey(0)
+                if k==ord('q'):
+                    cv2.destroyAllWindows()
+                    break
+                elif k==ord('c'):
+                    try:
+                        cv2.destroyWindow(win_name)
+                    except:
+                        cv2.destroyAllWindows()
+                        break
+            #cv2.imwrite('001_new.jpg', im)
             '''
             for i, image in enumerate(images.cpu()):
                 image = image.numpy()
