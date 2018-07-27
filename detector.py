@@ -37,7 +37,7 @@ class DK_Output:
     
 
     
-    def write_results(self, prediction, num_classes, confidence=0.5, nms_conf = 0.7):
+    def write_results(self, prediction, num_classes, confidence=0.5, nms_conf = 0.3):
         conf_mask=(prediction[:,:,4]>confidence).float().unsqueeze(2)
         prediction=prediction*conf_mask
         
@@ -70,7 +70,7 @@ class DK_Output:
             try:
                 img_classes=self._unique(image_pred_[:,-1])
             except:
-                seq = torch.FloatTensor([i]).cuda(), image_pred_
+                seq = torch.FloatTensor([i]).cuda(), torch.zeros(7).cuda()
                 if not write:
                     output = torch.cat(seq).unsqueeze(0)
                     write = True

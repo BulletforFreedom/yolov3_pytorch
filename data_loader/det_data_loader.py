@@ -14,7 +14,7 @@ from torch.utils import data
 import data_augmentation.aug_transforms as aug_trans
 import data_loader.transforms as trans
 #from datasets.det.ssd_data_loader import SSDDataLoader
-from data_loader.fr_data_loader import YoloDataLoader
+from data_loader.yolo_data_loader import YoloDataLoader
 from logger import Logger as Log
 
 
@@ -31,8 +31,8 @@ class DetDataLoader(object):
         self.img_transform = trans.Compose()
         self.img_transform.add(trans.ResizeImage(self.configer.get_inp_dim()))
         self.img_transform.add(trans.ToTensor())
-        self.img_transform.add(trans.Normalize(self.configer.get_dataset_mean(),
-                                               self.configer.get_dataset_std()))
+        #self.img_transform.add(trans.Normalize(self.configer.get_dataset_mean(),
+                                               #self.configer.get_dataset_std()))
         
     def get_loader(self):
         if self.configer.get_method() == 'single_shot_detector':

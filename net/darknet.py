@@ -22,6 +22,8 @@ from logger import Logger as log
 from layer.layers import EmptyLayer
 from layer.layers import DetectionLayer
 import detector
+from cfg.tools.configer import Configer
+from data_loader.det_data_loader import DetDataLoader as DataLoader
 
 
 class Darknet(nn.Module):
@@ -100,12 +102,12 @@ class Darknet(nn.Module):
         
         ptr = 0
         for i in range(len(self.module_list)):
-            module_type = self.blocks[i + 1]["type"]
+            module_type = self.blocks[i]["type"]
             
             if module_type == "convolutional":
                 model = self.module_list[i]
                 try:
-                    batch_normalize = int(self.blocks[i+1]["batch_normalize"])
+                    batch_normalize = int(self.blocks[i]["batch_normalize"])
                 except:
                     batch_normalize = 0
                 
@@ -322,26 +324,53 @@ class Darknet(nn.Module):
 
 if __name__=='__main__':
     
-    model = Darknet("../cfg/yolov3.cfg")
-    model.load_weights("../yolov3.weights")
+    cfg=Configer("../cfg/yolov3.cfg")
+    net_info=cfg.get_net_info()
+    blocks=cfg.get_blocks()
     
-    img_name="/home/lsk/Downloads/yolov3_pytorch/det_messi.jpg"
-    inp = ut.get_test_input(img_name,model.inp_dim)
-    CUDA = t.cuda.is_available()
-    if CUDA:
-        inp=inp.cuda()
-        model.cuda()
+    model = Darknet(cfg)
+    
+    model.load_weights("../../yolov3.weights")
+    
+    #model = nn.DataParallel(model)
+    if t.cuda.is_available():        
+        model.cuda()      
+        
+    dataloader = DataLoader(cfg, True)
+    debug_loader = dataloader.get_loader()    
+    
     model.eval()
-    prediction = model(inp)
-    DK=detector.DK_Output()
-    result=DK.write_results(prediction,model.get_num_classes())
-    result=result.cpu().numpy()
-    t.cuda.empty_cache()
     
-    im = cv2.imread(img_name)
-    #res=cv2.resize(im,(416,416),interpolation=cv2.INTER_CUBIC)
-    im_gt = im.copy()
-    gt_boxes = [[x[1], x[2], x[3], x[4]] for x in result]
-    gt_class_ids=[int(x[-1]) for x in result]
-    im = ut.plot_bb(im_gt,gt_boxes,gt_class_ids,model.inp_dim)
-    cv2.imwrite('001_new.jpg', im)
+    # Start the training loop    
+    for epoch in range(1):
+        for step, (images, img_dir_list, gt_bboxes, gt_labels) in enumerate(debug_loader):
+
+            images=images.cuda()            
+            prediction = model(images)
+            #origin_results=loss_function.debug_loss(prediction, gt_labels, gt_bboxes)
+            DK=detector.DK_Output()
+            results=DK.write_results(prediction, cfg.get_num_classes())
+            results=results.cpu().numpy()
+            t.cuda.empty_cache()
+            
+            for i, img_dir in enumerate(img_dir_list):
+                im = cv2.imread(img_dir)
+                im_gt = im.copy()            
+                gt_boxes = [[x[1], x[2], x[3], x[4]] for x in results if x[0]==i]
+                gt_class_ids=[int(x[-1]) for x in results if x[0]==i]
+                gt_class_name=[ cfg.get_dataset_name_seq()[x] for x in gt_class_ids]
+                im = ut.plot_bb(im_gt,gt_boxes,gt_class_name,cfg.get_inp_dim())
+                win_name = img_dir
+                cv2.imshow(win_name,im)
+                cv2.moveWindow(win_name,10,10)
+                
+                k = cv2.waitKey(0)
+                if k==ord('q'):
+                    cv2.destroyAllWindows()
+                    break
+                elif k==ord('c'):
+                    try:
+                        cv2.destroyWindow(win_name)
+                    except:
+                        cv2.destroyAllWindows()
+                        break    

@@ -38,7 +38,7 @@ class YoloDataLoader(data.Dataset):
         img_dir=self.img_list[index]
         img = cv2.imread(self.img_list[index])
         img=cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
+        img = img[:,:,:]/255.0
         labels, bboxes = self.__read_json_file(self.json_list[index])
 
         if self.aug_transform is not None:

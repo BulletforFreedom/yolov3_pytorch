@@ -30,7 +30,6 @@ if __name__=='__main__':
     blocks=cfg.get_blocks()
     
     model = Darknet(cfg)
-    #model.load_weights("../yolov3.weights")
     
     model.train(True)
     #model = nn.DataParallel(model)
@@ -38,13 +37,11 @@ if __name__=='__main__':
         model.cuda()      
         
     dataloader = DataLoader(cfg, True)
+    debug_loader = dataloader.get_loader()
         
     loss_function = YOLO3Loss(cfg)
 
-    # Start the training loop
-    
-    debug_loader = dataloader.get_loader()
-    
+    # Start the training loop    
     for epoch in range(1):
         for step, (images, img_dir_list, gt_bboxes, gt_labels) in enumerate(debug_loader):
 

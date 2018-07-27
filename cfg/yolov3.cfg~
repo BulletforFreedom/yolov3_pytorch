@@ -2,7 +2,7 @@
 method = yolov3
 
 #test:train=0
-train=1
+train=0
 
 #data augmentation
 angle=0
@@ -16,9 +16,9 @@ batch_size=2
 #subdivisions=1
 inp_dim=416
 channels=3
-workers=8
+workers=1
 
-#sgd
+optimizer=sgd
 momentum=0.9
 decay=0.0005
 learning_rate=0.001
