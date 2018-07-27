@@ -66,8 +66,11 @@ class CocoDetGenerator(object):
                 object_dict = dict()
                 object_dict['label'] = self.cat_ids.index(anno['category_id'])
                 bbox = anno['bbox']
-                object_dict['bbox'] = [float(bbox[0]), float(bbox[1]),
-                                       (float(bbox[2]) + float(bbox[0])), (float(bbox[3]) + float(bbox[1]))]
+                gt_x = (float(bbox[0]) + float(bbox[2])/2)/self.coco.imgs[img_id]['width']
+                gt_y = (float(bbox[1]) + float(bbox[3])/2)/self.coco.imgs[img_id]['height']
+                gt_w = float(bbox[2])/self.coco.imgs[img_id]['width']
+                gt_h = float(bbox[3])/self.coco.imgs[img_id]['height']
+                object_dict['bbox'] = [gt_x, gt_y, gt_w, gt_h]
 
                 object_list.append(object_dict)
 

@@ -38,7 +38,7 @@ class FRDataLoader(data.Dataset):
         img = cv2.imread(self.img_list[index])
         img=cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        labels, bboxes = self.__read_json_file(self.json_list[index])
+        labels, bboxes, img_size = self.__read_json_file(self.json_list[index])
 
         if self.aug_transform is not None:
             img, bboxes = self.aug_transform(img, bboxes=bboxes)
@@ -50,7 +50,7 @@ class FRDataLoader(data.Dataset):
         if self.img_transform is not None:
             img = self.img_transform(img)
 
-        return img, bboxes, labels
+        return img, img_size, bboxes, labels
     
 
     def __len__(self):
@@ -65,6 +65,8 @@ class FRDataLoader(data.Dataset):
         """
         json_dict = JsonHelper.load_file(json_file)
 
+        img_size = [json_dict['width'], json_dict['height']]
+        
         labels = list()
         bboxes = list()
 
@@ -72,7 +74,7 @@ class FRDataLoader(data.Dataset):
             labels.append(object['label'])
             bboxes.append(object['bbox'])
 
-        return labels, bboxes
+        return labels, bboxes, img_size
 
     def __list_dirs(self, root_dir):
         img_list = list()

@@ -34,12 +34,12 @@ if __name__=='__main__':
                                          (416, 416), is_training=True),
                                          batch_size=1, shuffle=False, num_workers=32, pin_memory=True)
     for step, samples in enumerate(dataloader1):
-        images, labels = samples["image"], samples["label"]
-        print(images.size())
-        print(labels.shape)
+        images1, labels1 = samples["image"], samples["label"]
+        print(images1.size())
+        print(labels1.shape)
         break
     '''
-    cfg=Configer("./cfg/yolov3_train.cfg")
+    cfg=Configer("./cfg/yolov3.cfg")
     net_info=cfg.get_net_info()
     blocks=cfg.get_blocks()
     
@@ -60,15 +60,12 @@ if __name__=='__main__':
     train_loader = dataloader.get_loader()
     
     for epoch in range(1):
-        for step, (images, bboxes, labels) in enumerate(train_loader):
+        for step, (images, img_size, bboxes, labels) in enumerate(train_loader):
 
-            print(images.shape)
-            print(bboxes[0].size())
-            print(labels[0])
-            break
             images=images.cuda()            
             prediction = model(images)
             #loss=loss_function(prediction, labels, model.stride)
+            break
             labels=loss_function.debug_loss(prediction, labels)
             labels=labels.cuda()
             DK=detector.DK_Output()

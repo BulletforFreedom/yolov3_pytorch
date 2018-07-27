@@ -63,13 +63,11 @@ class DetDataLoader(object):
                 bs=self.configer.get_batch_size()
                 train_info='train'
                 #aug_transform=self.aug_train_transform
-                #img_transform=self.img_transform
                 shuffle=True
             else:
                 bs=1
                 train_info='val'
                 #aug_transform=self.aug_val_transform
-                #img_transform=self.img_transform
                 shuffle=False
             trainloader = data.DataLoader(
                 FRDataLoader(root_dir=os.path.join(self.configer.get_data_dir(), train_info),
@@ -77,7 +75,8 @@ class DetDataLoader(object):
                              img_transform=self.img_transform,
                              configer=self.configer),
                 batch_size=bs, shuffle=shuffle,
-                num_workers=1, collate_fn=self._detection_collate, pin_memory=True)
+                num_workers=self.configer.get_num_workers(), 
+                collate_fn=self._detection_collate, pin_memory=True)
             return trainloader
 
         else:
@@ -130,9 +129,12 @@ class DetDataLoader(object):
         imgs = []
         bboxes = []
         labels = []
+        img_size =[]
         for sample in batch:
             imgs.append(sample[0])
-            bboxes.append(sample[1])
-            labels.append(sample[2])
+            img_size.append(sample[1])
+            bboxes.append(sample[2])
+            labels.append(sample[3])
+            
 
-        return torch.stack(imgs, 0), bboxes, labels
+        return torch.stack(imgs, 0), img_size, bboxes, labels

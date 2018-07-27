@@ -72,13 +72,7 @@ class ToTensor(object):
         Tensor: Converted image.
     """
     def __call__(self, inputs):
-        if isinstance(inputs, Image.Image):
-            channels = len(inputs.mode)
-            inputs = np.array(inputs)
-            inputs = inputs.reshape(inputs.shape[0], inputs.shape[1], channels)
-            inputs = torch.from_numpy(inputs.transpose(2, 0, 1))
-        else:
-            inputs = torch.from_numpy(inputs.transpose(2, 0, 1))
+        inputs = torch.from_numpy(inputs.transpose(2, 0, 1))
 
         return inputs.float()
 

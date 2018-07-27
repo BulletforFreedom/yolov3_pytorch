@@ -25,7 +25,7 @@ class Configer(object):
         return self.net_info
     
     def is_train(self):
-        return self.net_info['train']
+        return int(self.net_info['train'])
     
     def get_blocks(self):
         return self.blocks
@@ -57,6 +57,9 @@ class Configer(object):
     
     def get_method(self):
         return self.net_info['method']
+    
+    def get_num_workers(self):
+        return int(self.net_info['workers'])
     
     def get_batch_size(self):
         return int(self.net_info['batch_size'])

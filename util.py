@@ -27,7 +27,7 @@ def get_test_input(img_name,inp_dim):
 
 def plot_bb(im,bb,cls,inp_dim,textSize=1,textThickness=2):
     if im.shape[0]==3:
-        im=im.transpose(1,2,0)#.contiguous()
+        im=im.transpose(1,2,0)
     h,w,c = im.shape
 
     for idx,box in enumerate(bb):
