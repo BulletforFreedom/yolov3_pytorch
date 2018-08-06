@@ -13,6 +13,7 @@ from PIL import Image
 import collections
 import cv2
 
+from logger import Logger as log
 
 class Normalize(object):
     """Normalize a ``torch.tensor``
@@ -77,12 +78,13 @@ class ToTensor(object):
         return inputs.float()
 
 class ResizeImage(object):
-    def __init__(self, new_size, interpolation=cv2.INTER_LINEAR):
-        self.new_size = new_size
-        self.interpolation = interpolation
+    def __init__(self, configer, interpolation=cv2.INTER_LINEAR):
+        self.configer = configer
+        self.interpolation = interpolation        
 
-    def __call__(self, inputs):
-        image = cv2.resize(inputs, (self.new_size,self.new_size), interpolation=self.interpolation)
+    def __call__(self, inputs):        
+        new_size = self.configer.get_resize_dim()        
+        image = cv2.resize(inputs, (new_size,new_size), interpolation=self.interpolation)
         return image
 
 class Scale(object):

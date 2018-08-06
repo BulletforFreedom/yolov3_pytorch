@@ -47,9 +47,8 @@ class Darknet(nn.Module):
         
         for i in range(len(modules)):
             if modules[i]=='convolutional' or modules[i]=='upsample':
-                x=self.module_list[i](x)
-                   
-                outputs[i]=x
+                x=self.module_list[i](x)                
+                outputs[i]=x                
                 
             elif modules[i]=='shortcut':
                 from_=self.module_list[i][0].shortcut_from
@@ -63,9 +62,11 @@ class Darknet(nn.Module):
                 if end>0:
                     x=t.cat((x,outputs[end]),1)
                 outputs[i]=x
-            elif modules[i]=='yolo':
-
+                
+            elif modules[i]=='yolo':                
+                
                 x = self.module_list[i](x)#ut.predict_transform(x, self.inp_dim, anchors, self.num_classes, CUDA)
+                
                 #if not self.flag:   
                     #self.configer.set_scaled_anchor_list(self.module_list[i][0].scaled_anchors.cpu().numpy())
                 if type(x) == int:#?
@@ -296,6 +297,9 @@ class Darknet(nn.Module):
                 module.add_module('upsample_{0}'.format(index),upsample)
                 
             elif x['type']=='yolo':
+                
+                self.configer.count_num_feature_map()
+                
                 mask=x['mask'].split(',')
                 mask=[int(x) for x in mask]
                 
@@ -330,8 +334,18 @@ if __name__=='__main__':
     
     model = Darknet(cfg)
     
-    model.load_weights("../../yolov3.weights")
-    
+    #model.load_weights("../../yolov3.weights")
+    log.info('Loading weights from backup/100_params.pkl.')
+    state_dict = t.load('../backup/500_params.pkl')
+    # create new OrderedDict that does not contain `module.`
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        name = k[7:] # remove `module.`
+        new_state_dict[name] = v
+    # load params
+    model.load_state_dict(new_state_dict)
+    log.info('Done!')
     #model = nn.DataParallel(model)
     if t.cuda.is_available():        
         model.cuda()      
@@ -341,16 +355,17 @@ if __name__=='__main__':
     
     model.eval()
     
+    DK=detector.DK_Output()
+    
     # Start the training loop    
     for epoch in range(1):
         for step, (images, img_dir_list, gt_bboxes, gt_labels) in enumerate(debug_loader):
 
             images=images.cuda()            
             prediction = model(images)
-            #origin_results=loss_function.debug_loss(prediction, gt_labels, gt_bboxes)
-            DK=detector.DK_Output()
+            #origin_results=loss_function.debug_loss(prediction, gt_labels, gt_bboxes)            
             results=DK.write_results(prediction, cfg.get_num_classes())
-            results=results.cpu().numpy()
+            results=results.cpu().detach().numpy()
             t.cuda.empty_cache()
             
             for i, img_dir in enumerate(img_dir_list):
@@ -359,7 +374,7 @@ if __name__=='__main__':
                 gt_boxes = [[x[1], x[2], x[3], x[4]] for x in results if x[0]==i]
                 gt_class_ids=[int(x[-1]) for x in results if x[0]==i]
                 gt_class_name=[ cfg.get_dataset_name_seq()[x] for x in gt_class_ids]
-                im = ut.plot_bb(im_gt,gt_boxes,gt_class_name,cfg.get_inp_dim())
+                im = ut.plot_bb(im_gt,gt_boxes,gt_class_name,cfg.get_final_inp_dim())
                 win_name = img_dir
                 cv2.imshow(win_name,im)
                 cv2.moveWindow(win_name,10,10)
@@ -373,4 +388,6 @@ if __name__=='__main__':
                         cv2.destroyWindow(win_name)
                     except:
                         cv2.destroyAllWindows()
-                        break    
+                        break
+            if step == 0:
+                break

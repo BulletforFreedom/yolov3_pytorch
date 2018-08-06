@@ -23,13 +23,12 @@ class DetDataLoader(object):
     def __init__(self, configer, is_debug=False):
         self.configer = configer
         self.is_debug = is_debug
-
         #self.aug_train_transform = aug_trans.AugCompose(self.configer, split='train')
 
         #self.aug_val_transform = aug_trans.AugCompose(self.configer, split='val')
         
         self.img_transform = trans.Compose()
-        self.img_transform.add(trans.ResizeImage(self.configer.get_inp_dim()))
+        self.img_transform.add(trans.ResizeImage(configer))
         self.img_transform.add(trans.ToTensor())
         #self.img_transform.add(trans.Normalize(self.configer.get_dataset_mean(),
                                                #self.configer.get_dataset_std()))
@@ -70,17 +69,16 @@ class DetDataLoader(object):
                 train_info='val'
                 #aug_transform=self.aug_val_transform
                 shuffle=False
+                #self.configer.reset_mul_train(0)
                 
             if self.is_debug:
                 detection_collate = self._detection_collate_debug
             else:
                 detection_collate=self._detection_collate
-                
             trainloader = data.DataLoader(
                 YoloDataLoader(root_dir=os.path.join(self.configer.get_data_dir(), train_info),
                              aug_transform=None,
-                             img_transform=self.img_transform,
-                             configer=self.configer),
+                             img_transform=self.img_transform),
                 batch_size=bs, shuffle=shuffle,
                 num_workers=self.configer.get_num_workers(), 
                 collate_fn=detection_collate, pin_memory=True)

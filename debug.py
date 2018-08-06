@@ -6,17 +6,11 @@ Created on Wed Jul 18 16:48:50 2018
 @author: lsk
 """
 # -*- coding: utf-8 -*-
-import os
-
 import torch as t
-import torch.nn as nn
-import numpy as np
 import cv2
 #import math
 
-from boxes.boxes import Boxes as bbox
 from net.darknet import Darknet
-from common.coco_dataset import COCODataset
 from layer.loss_function import YOLO3Loss
 import detector
 import util as ut
@@ -42,7 +36,7 @@ if __name__=='__main__':
     loss_function = YOLO3Loss(cfg)
 
     # Start the training loop    
-    for epoch in range(1):
+    for epoch in range(cfg.get_epochs()):
         for step, (images, img_dir_list, gt_bboxes, gt_labels) in enumerate(debug_loader):
 
             images=images.cuda()            
@@ -61,7 +55,7 @@ if __name__=='__main__':
                 gt_boxes = [[x[1], x[2], x[3], x[4]] for x in results if x[0]==i]
                 gt_class_ids=[int(x[-1]) for x in results if x[0]==i]
                 gt_class_name=[ cfg.get_dataset_name_seq()[x] for x in gt_class_ids]
-                im = ut.plot_bb(im_gt,gt_boxes,gt_class_name,cfg.get_inp_dim())
+                im = ut.plot_bb(im_gt,gt_boxes,gt_class_name,cfg.get_resize_dim())
                 win_name = '1'
                 cv2.imshow(win_name,im)
                 cv2.moveWindow(win_name,10,10)
@@ -69,10 +63,18 @@ if __name__=='__main__':
                 k = cv2.waitKey(0)
                 if k==ord('q'):
                     cv2.destroyAllWindows()
-                    break
                 elif k==ord('c'):
                     try:
                         cv2.destroyWindow(win_name)
                     except:
                         cv2.destroyAllWindows()
-                        break            
+                        break 
+            if epoch + 1 < cfg.get_epochs() and step == 2:
+                break
+            if step==3:
+                break
+        if epoch + 2 < cfg.get_epochs():
+            cfg.reset_mul_train(1)
+        else:
+            cfg.reset_mul_train(2)
+        cfg.reset_scaled_anchor_list()

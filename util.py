@@ -8,7 +8,24 @@ from torch.autograd import Variable
 import numpy as np
 import cv2 
 import matplotlib.pyplot as plt
+import random
 #from bbox import bbox_iou
+
+
+def unique(tensor1d):
+     temp=[]
+     for x in tensor1d:
+         #log.info(x)
+         if len(temp)==0:
+             temp.append(x)
+         else:
+             for y in temp:
+                 #log.info(y)
+                 if x==y:
+                     break
+                 if y==temp[-1]:
+                     temp.append(x)
+     return temp
 
 
 def load_classes(namesfile):
@@ -45,6 +62,12 @@ def plot_bb(im,bb,cls,inp_dim,textSize=1,textThickness=2):
                     (0,200,255),
                     thickness=textThickness)    
     return im
+
+def random_resize_image(original_img_size, strides):
+    amplitude = original_img_size // 32 -5         
+    new_size = (random.randint(0,9) + amplitude) * strides
+    return new_size
+        
 
 if __name__ == '__main__':
     cfgfile='./cfg/yolov3.cfg'

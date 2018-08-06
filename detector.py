@@ -21,6 +21,9 @@ from boxes.boxes import Boxes as bbox
 class DK_Output:        
     
     def _unique(self,tensor1d):
+        '''
+        
+        '''
         temp=[]
         for x in tensor1d:
             #log.info(x)
@@ -37,7 +40,7 @@ class DK_Output:
     
 
     
-    def write_results(self, prediction, num_classes, confidence=0.5, nms_conf = 0.3):
+    def write_results(self, prediction, num_classes, confidence=0.4, nms_conf = 0.3):
         conf_mask=(prediction[:,:,4]>confidence).float().unsqueeze(2)
         prediction=prediction*conf_mask
         
@@ -66,11 +69,11 @@ class DK_Output:
             try:
                 image_pred_ = image_pred[non_zero_ind,:]
             except:
-                continue #if there is no result,
+                continue #if there is no object,
             try:
-                img_classes=self._unique(image_pred_[:,-1])
+                img_classes=ut.unique(image_pred_[:,-1])
             except:
-                seq = torch.FloatTensor([i]).cuda(), torch.zeros(7).cuda()
+                seq = torch.FloatTensor([i]).cuda(), image_pred_#one object
                 if not write:
                     output = torch.cat(seq).unsqueeze(0)
                     write = True

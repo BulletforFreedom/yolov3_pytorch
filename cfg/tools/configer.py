@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from data.data_info import coco2014 as data_info
+import os
 
 class Configer(object):
     def __init__(self, cfgfile):
@@ -11,15 +12,34 @@ class Configer(object):
         self.net_info['strides'] = -1
         self.net_info['scaled_anchor_list'] = []
         self.net_info['anchor_list'] = []
+        #self.net_info['next_itr'] = 0
+        self.net_info['num_feature_map'] = 0
+        self.net_info['resize_dim'] = int(self.net_info['final_inp_dim'])
+        self.net_info['current_path']=os.path.abspath('..') 
+        
+    def set_resize_dim(self, new_size):
+        self.net_info['resize_dim'] = new_size        
+        
+    def count_num_feature_map(self):
+        self.net_info['num_feature_map'] += 1
         
     def set_total_strides(self, strides):
         self.net_info['strides'] = strides
         
     def set_scaled_anchor_list(self, scaled_anchor_list):
-        self.net_info['scaled_anchor_list'].append(scaled_anchor_list)
+        self.net_info['scaled_anchor_list'].append(scaled_anchor_list)    
         
     def set_anchor_list(self, anchor):
         self.net_info['anchor_list'].append(anchor)
+        
+    def get_resize_dim(self):
+        return self.net_info['resize_dim']
+        
+    def get_itr(self):
+        return self.net_info['next_itr']
+    
+    def get_num_feature_map(self):
+        return self.net_info['num_feature_map']
     
     def get_net_info(self):
         return self.net_info
@@ -27,11 +47,14 @@ class Configer(object):
     def is_train(self):
         return int(self.net_info['train'])
     
+    def is_mul_train(self):
+        return int(self.net_info['mul_train'])
+    
     def get_blocks(self):
         return self.blocks
     
-    def get_inp_dim(self):
-        return int(self.net_info['inp_dim'])
+    def get_final_inp_dim(self):
+        return int(self.net_info['final_inp_dim'])
     
     def get_num_classes(self):
         return int(self.net_info['classes'])
@@ -64,6 +87,18 @@ class Configer(object):
     def get_batch_size(self):
         return int(self.net_info['batch_size'])
     
+    def get_epochs(self):
+        return int(self.net_info['epochs'])
+    
+    def get_optimizer(self):
+        return self.net_info['optimizer']
+    
+    def get_learning_rate(self):
+        return float(self.net_info['learning_rate'])
+    
+    def get_weight_decay(self):
+        return float(self.net_info['weight_decay'])
+    
     def get_dataset_mean(self):
         return self.net_info['dataset']['mean']
     
@@ -75,6 +110,15 @@ class Configer(object):
     
     def get_data_dir(self):
         return self.net_info['dataset']['data_dir']
+    
+    def get_current_path(self):
+        return self.net_info['current_path']
+    
+    def get_backup_path(self):
+        backup_path = os.path.join(self.net_info['current_path'],'backup')
+        if not os.path.exists(backup_path):
+            os.mkdir(backup_path)
+        return backup_path
     
     def _parse_cfg(self):
         """

@@ -1,4 +1,5 @@
 /data
+/backup
 *.pyc
 *.weights
 *.o

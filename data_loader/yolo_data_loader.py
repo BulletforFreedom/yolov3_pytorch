@@ -25,10 +25,9 @@ from logger import Logger as Log
 class YoloDataLoader(data.Dataset):
 
     def __init__(self, root_dir=None, aug_transform=None,
-                 img_transform=None, configer=None):
+                 img_transform=None):
         super(YoloDataLoader, self).__init__()
         self.img_list, self.json_list = self.__list_dirs(root_dir)
-        self.configer = configer
         self.aug_transform = aug_transform
         self.img_transform = img_transform
         #self.det_data_utilizer = DetDataUtilizer(configer)
