@@ -40,7 +40,7 @@ class DK_Output:
     
 
     
-    def write_results(self, prediction, num_classes, confidence=0.4, nms_conf = 0.3):
+    def write_results(self, prediction, num_classes, confidence=0.5, nms_conf = 0.3):
         conf_mask=(prediction[:,:,4]>confidence).float().unsqueeze(2)
         prediction=prediction*conf_mask
         

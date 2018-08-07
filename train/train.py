@@ -40,7 +40,7 @@ if __name__ == "__main__":
         
     loss_function = YOLO3Loss(cfg)
     totol_loss = 0
-    optimizer = t.optim.Adam(model.parameters(), lr=cfg.get_learning_rate(),
+    optimizer = t.optim.SGD(model.parameters(), lr=cfg.get_learning_rate(),
                              weight_decay=cfg.get_weight_decay())
     DK=detector.DK_Output()
     start_training = time.time()
@@ -59,13 +59,11 @@ if __name__ == "__main__":
             
             optimizer.zero_grad()           # clear gradients for this training step
             loss.backward()                 # backpropagation, compute gradients
-            optimizer.step() 
-            
-            totol_loss += loss.item()
-            avg_loss = totol_loss / total_itr            
+            optimizer.step()             
+                        
             if (step + 1) % 1 == 0:
-                print('Epoch: %d, Step: %d, Current_loss: %.2f, Avg_loss: %.2f, %.2f seconds\n' 
-                      %(epoch+1, step+1, loss.item(), avg_loss, time.time()-start_batch))                
+                print('Epoch: %d, Step: %d, Current_loss: %.4f, %.2f seconds\n' 
+                      %(epoch+1, step+1, loss.item(), time.time()-start_batch))                
             
             if total_itr % 500 == 0:
                 backup_dir = os.path.join(cfg.get_backup_path(),'%d_params.pkl'%total_itr)
