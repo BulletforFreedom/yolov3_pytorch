@@ -34,6 +34,15 @@ class Configer(object):
         
     def get_resize_dim(self):
         return self.net_info['resize_dim']
+    
+    def get_optimizer(self):
+        return self.net_info['optimizer']
+    
+    def get_lr_steps(self):
+        return int(self.net_info['epochs'])//4
+    
+    def get_lr_gamma(self):
+        return float(self.net_info['lr_gamma'])
         
     def get_itr(self):
         return self.net_info['next_itr']

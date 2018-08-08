@@ -28,8 +28,8 @@ class YOLO3Loss(nn.Module):
         self.class_scale = loss_lambda[3]
         
 
-        self.mse_loss = nn.MSELoss()
-        self.bce_loss = nn.BCELoss()
+        self.mse_loss = nn.MSELoss(size_average=False)
+        self.bce_loss = nn.BCELoss(size_average=False)
 
     def forward(self, prediction, labels, bboxes):
         
@@ -51,36 +51,28 @@ class YOLO3Loss(nn.Module):
 
         mask, noobj_mask, tx, ty, tw, th, weight_w_h, tconf, tcls = self._get_target(labels, bboxes, total_anchors,
                                                                         bs, img_size, num_feature_map, feature_map_size_list)
-        noobj_mask = noobj_mask.cuda()                                                                                   
-        loss_noobj_conf = 0.5 * self.bce_loss(conf * noobj_mask, noobj_mask * 0.0)                                       
+        noobj_mask = noobj_mask.cuda()
+        #noobj_sum = noobj_mask.sum()
+        loss_noobj_conf = 0.4 * self.bce_loss(conf * noobj_mask, noobj_mask * 0.0) / bs #/ noobj_sum                                      
         if t.nonzero(mask).numel() == 0:  #no object, all background                                                     
-            return loss_noobj_conf, 0, 0, 0, 0, loss_noobj_conf, 0                                                       
+            return loss_noobj_conf, 0, 0, 0, 0, loss_noobj_conf, 0   
+        
         mask = mask.cuda()
+        #obj_sum = mask.sum()
         tx, ty, tw, th = tx.cuda(), ty.cuda(), tw.cuda(), th.cuda()
         weight_w_h, tconf, tcls = weight_w_h.cuda(), tconf.cuda(), tcls.cuda()        
         #  losses        
-        loss_x = self.mse_loss(x * mask * weight_w_h, tx * weight_w_h)
-        loss_y = self.mse_loss(y * mask * weight_w_h, ty * weight_w_h)#* weight_w_h
-        loss_w = self.mse_loss(w * mask * weight_w_h, tw * weight_w_h)
-        loss_h = self.mse_loss(h * mask * weight_w_h, th * weight_w_h)
-        loss_obj_conf = self.bce_loss(conf * mask, tconf)
-        loss_conf = loss_obj_conf + loss_noobj_conf
-        loss_cls = self.bce_loss(pred_cls[mask == 1], tcls[mask == 1])
+        loss_x = self.mse_loss(x * mask * weight_w_h, tx * weight_w_h) / bs
+        loss_y = self.mse_loss(y * mask * weight_w_h, ty * weight_w_h) / bs#* weight_w_h
+        loss_w = self.mse_loss(w * mask * weight_w_h, tw * weight_w_h) / bs
+        loss_h = self.mse_loss(h * mask * weight_w_h, th * weight_w_h) / bs
+        loss_obj_conf = self.bce_loss(conf * mask, tconf) / bs#/ obj_sum
+        loss_cls = self.bce_loss(pred_cls[mask == 1], tcls[mask == 1]) / (bs * self.num_classes)
         #  total loss = losses * weight
-        loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
-        
-        
-        print(loss_x)
-        print(loss_y)
-        print(loss_w)
-        print(loss_h)
-        print(loss_obj_conf)
-        print(loss_noobj_conf)
-        print(loss_cls)
-        
+        loss = 2*(loss_x + loss_y + loss_w + loss_h) + loss_obj_conf + loss_noobj_conf + loss_cls
 
-        return loss, loss_x.item(), loss_y.item(), loss_w.item(),\
-            loss_h.item(), loss_conf.item(), loss_cls.item()
+        return loss, loss_x.item(), loss_y.item(), loss_w.item(), loss_h.item(),\
+               loss_obj_conf.item(), loss_noobj_conf.item(), loss_cls.item()
         
     
     def _get_target(self, labels, bboxes, total_anchors, bs, img_size, num_feature_map, feature_map_size_list):

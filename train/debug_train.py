@@ -39,38 +39,55 @@ if __name__ == "__main__":
     debug_loader = dataloader.get_loader()
         
     loss_function = YOLO3Loss(cfg)
-    totol_loss = 0
     optimizer = t.optim.SGD(model.parameters(), lr=cfg.get_learning_rate(),
                              weight_decay=cfg.get_weight_decay())
+    #lr_scheduler = t.optim.lr_scheduler.StepLR(optimizer, step_size=300, gamma=0.1)
     DK=detector.DK_Output()
     start_training = time.time()
+    total_itr = 0
+    ten_batch_loss = []
     # Start the training loop    
     for epoch in range(cfg.get_epochs()):
         #log.info('Input image: %d'%cfg.get_resize_dim())
         for step, (images, img_dir_list, gt_bboxes, gt_labels) in enumerate(debug_loader):
             start_batch = time.time()
-            total_itr = step + epoch*1 + 1
+            total_itr += 1
 
             images=Variable(images,requires_grad=True).cuda()  
             
             prediction = model(images)
-            loss, x, y, w, h, conf, cls \
+            loss, x, y, w, h, obj_conf, noobj_conf, cls \
             = loss_function(prediction, gt_labels, gt_bboxes)
+            
+            if isnan(loss):
+                sys.exit()
             
             optimizer.zero_grad()           # clear gradients for this training step
             loss.backward()                 # backpropagation, compute gradients
-            optimizer.step()             
-                        
-            if (step + 1) % 1 == 0:
-                print('Epoch: %d, Step: %d, Current_loss: %.4f, %.2f seconds\n' 
-                      %(epoch+1, step+1, loss.item(), time.time()-start_batch))                
+            optimizer.step()  
             
-            if total_itr % 500 == 0:
+            ten_batch_loss.append(loss.item())
+            if len(ten_batch_loss) > 10:
+                ten_batch_loss.pop(0)
+                        
+            if (step + 1) % 1 == 0:                
+                print('loos_x: %.4f'%x)
+                print('loos_y: %.4f'%y)
+                print('loos_w: %.4f'%w)
+                print('loos_h: %.4f'%h)
+                print('loos_obj: %.4f'%obj_conf)
+                print('loos_noobj: %.4f'%noobj_conf)
+                print('loos_cls: %.4f'%cls) 
+                avg_loss = sum(ten_batch_loss)/len(ten_batch_loss)
+                print('Epoch: %d, Step: %d, Current_loss: %.4f, Avg_loss: %.4f, %.2f seconds\n' 
+                      %(epoch+1, step+1, loss.item(), avg_loss, time.time()-start_batch))
+            if total_itr % 10 == 0 and total_itr > 5:
                 backup_dir = os.path.join(cfg.get_backup_path(),'%d_params.pkl'%total_itr)
                 log.info('Saving weights to %s'%backup_dir)
                 t.save(model.state_dict(), backup_dir)
             if epoch + 1 < cfg.get_epochs() and step == 0:
                 break
+        #lr_scheduler.step()
         if epoch + 2 < cfg.get_epochs() and cfg.is_mul_train():
             cfg.set_resize_dim(ut.random_resize_image(cfg.get_final_inp_dim(),cfg.get_total_strides()))
         else:

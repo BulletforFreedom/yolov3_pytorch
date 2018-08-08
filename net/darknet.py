@@ -336,7 +336,7 @@ if __name__=='__main__':
     
     #model.load_weights("../../yolov3.weights")
     log.info('Loading weights from backup/100_params.pkl.')
-    state_dict = t.load('../backup/500_params.pkl')
+    state_dict = t.load('../backup/687_params.pkl')
     # create new OrderedDict that does not contain `module.`
     from collections import OrderedDict
     new_state_dict = OrderedDict()
@@ -389,5 +389,5 @@ if __name__=='__main__':
                     except:
                         cv2.destroyAllWindows()
                         break
-            if step == 0:
+            if step == 1:
                 break
